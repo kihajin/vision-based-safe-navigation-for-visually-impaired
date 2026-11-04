@@ -17,24 +17,19 @@ KLTN/
 │   ├── foundation.ipynb       # Khảo sát mask SANPO/ADE20K và dữ liệu depth
 │   ├── mydata.ipynb           # Sinh segmentation mask và depth map
 │   └── test_program.ipynb     # Pipeline phát hiện, cảnh báo, video và đánh giá
-├── dataset/
-│   ├── data1/ ... data10/     # Các tập video và dữ liệu SANPO theo frame
-│   └── .../left/
-│       ├── video_frames/
-│       ├── depth_maps/
-│       ├── segmentation_masks/
-│       └── zed_depth_maps/
-├── my_data_ver2/
-│   ├── video_frames/
-│   ├── depth_maps/
-│   └── segmentation_masks/
-├── output/                    # Video kết quả, prediction và message dạng JSON
 ├── ground_truth*.json         # Nhãn hướng điều hướng dùng cho đánh giá
 └── labels_coco_vi.json        # Ánh xạ tên lớp COCO sang tiếng Việt
-
 ```
 
-Một số tập con có thể thiếu `segmentation_masks` hoặc loại depth nhất định. Kiểm tra các thư mục của tập dữ liệu bạn chọn trước khi chạy pipeline.
+Các thư mục `dataset/`, `my_data_ver2/` và `output/` không được lưu trong repo GitHub. Tải chúng từ [Google Drive](https://drive.google.com/drive/folders/1TZ_Z8pymearis42j1NoIqxCJXs4xaC6P?usp=sharing). Nếu không mở được, cần được cấp quyền xem thư mục.
+
+### Các thư mục trên Drive
+
+- `dataset/`: các tập SANPO, từ `data1/` đến `data10/`. Trong mỗi tập, `left/` có thể chứa `video_frames/` (ảnh RGB), `depth_maps/` (depth nén `.float16.gz`), `segmentation_masks/` (mask PNG) và `zed_depth_maps/` (depth từ cảm biến ZED, nếu có). Một số tập không có đủ mọi loại dữ liệu. Ở dự án này, mình chỉ dùng data1, data2, data5.
+- `my_data_ver2/`: dữ liệu video tự thu thập đã tiền xử lý, gồm frame RGB, depth map và segmentation mask đồng bộ. Đây là đầu vào mặc định của pipeline trong `test_program.ipynb`.
+- `output/`: kết quả chạy mẫu và nơi notebook ghi kết quả mới. Chứa video `final_*.mp4`, dự đoán `predictions*.json`, cảnh báo `messages*.json` và dữ liệu phát hiện YOLO thô.
+
+Các tập con trong `dataset/` có thể thiếu `segmentation_masks` hoặc một số loại depth map. Kiểm tra dữ liệu sau khi tải trước khi chạy pipeline.
 
 ## Môi trường và phụ thuộc
 
@@ -48,22 +43,41 @@ Các thư viện chính được dùng gồm:
 - `gTTS`, `pydub`
 - `ffmpeg` để ghép audio với video
 
-Nên bật GPU trong Colab để tăng tốc suy luận. Việc tải model từ Hugging Face, tải YOLO weights và dùng gTTS cần kết nối Internet. `mydata.ipynb` còn clone mã nguồn Depth Anything V2 và tải checkpoint `depth_anything_v2_vitl.pth`.
+Trong Google Colab, có thể cài các gói notebook cần bằng cell sau:
+
+```python
+%pip install ultralytics transformers gTTS pydub
+!apt-get update -qq && apt-get install -y ffmpeg
+```
+
+Colab thường đã có `torch`, `torchvision`, `numpy` và OpenCV. Nên bật GPU để tăng tốc suy luận. Việc tải model từ Hugging Face, tải YOLO weights và dùng gTTS cần kết nối Internet. `mydata.ipynb` còn clone mã nguồn Depth Anything V2 và tải checkpoint `depth_anything_v2_vitl.pth`.
 
 ## Chuẩn bị dữ liệu
 
-1. Đặt dự án trong Google Drive theo cấu trúc `MyDrive/KLTN/`, hoặc chỉnh các đường dẫn tuyệt đối trong notebook cho khớp vị trí thực tế.
-2. Dữ liệu đầu vào của `test_program.ipynb` cần được tổ chức thành ba thư mục song song:
+1. Tải mã nguồn từ GitHub hoặc sao chép repo vào Google Drive tại `MyDrive/KLTN/`.
+2. Tải `dataset/`, `my_data_ver2/` và `output/` từ [Google Drive](https://drive.google.com/drive/folders/1TZ_Z8pymearis42j1NoIqxCJXs4xaC6P?usp=sharing). Nếu Drive chứa file ZIP, giải nén chúng vào `MyDrive/KLTN/` để các thư mục nằm cạnh `Code_final/`.
+3. Kết nối Google Drive trong Colab. Nếu đặt dự án ở vị trí khác, cập nhật các đường dẫn tuyệt đối trong notebook.
+
+Dữ liệu đầu vào của `test_program.ipynb` cần có cấu trúc sau:
 
 ```text
-<DATA_PATH>/
+my_data_ver2/
 ├── video_frames/           # Ảnh RGB theo frame
 ├── depth_maps/             # File .float16.gz tương ứng từng frame
 └── segmentation_masks/     # Mask PNG tương ứng từng frame
 ```
 
-3. File depth phải theo định dạng notebook đọc: dữ liệu `float16` nén gzip, trong đó hai giá trị đầu là chiều cao và chiều rộng, phần còn lại là ma trận depth.
-4. Đảm bảo tên file giữa frame, depth map và segmentation mask khớp nhau. Mask cần dùng đúng bộ nhãn khai báo trong `ThesisConfig.DATASET_TYPE` và `SEGMENTATION_ID2LABEL`.
+Các notebook tiền xử lý trên SANPO cũng dùng dữ liệu dạng:
+
+```text
+dataset/data1/left/
+├── video_frames/
+├── depth_maps/
+└── segmentation_masks/
+```
+
+- File depth phải theo định dạng notebook đọc: dữ liệu `float16` nén gzip, trong đó hai giá trị đầu là chiều cao và chiều rộng, phần còn lại là ma trận depth.
+- Đảm bảo tên file giữa frame, depth map và segmentation mask khớp nhau. Mask cần dùng đúng bộ nhãn khai báo trong `ThesisConfig.DATASET_TYPE` và `SEGMENTATION_ID2LABEL`.
 
 ## Chạy notebook
 
@@ -77,14 +91,14 @@ Notebook chính dùng model YOLO `yolo11n.pt`; Ultralytics có thể tự tải 
 
 ## Kết quả
 
-Thư mục `output/` đã có các file kết quả mẫu, gồm:
+Sau khi chạy notebook chính, kết quả được ghi vào `output/` trong Google Drive, gồm:
 
 - `final_*.mp4`: video đầu ra; một số bản có cảnh báo âm thanh.
 - `predictions*.json`: dự đoán hướng điều hướng theo frame.
 - `messages*.json`: cảnh báo và thông tin tương ứng theo đoạn/frame.
 - `raw_yolo_detections.json`: kết quả phát hiện đối tượng thô.
 
-Các file `ground_truth*.json` lưu hướng điều hướng tham chiếu; `ground_truth_my_data_ver2.json` là nhãn bổ sung được tạo từ annotation. `test_program.ipynb` có các cell đánh giá dự đoán so với ground truth và thống kê warning.
+Các file `ground_truth*.json` lưu hướng điều hướng tham chiếu; `ground_truth_my_data_ver2.json` là nhãn bổ sung được tạo từ annotation và được lưu trong repo. `test_program.ipynb` có các cell đánh giá dự đoán so với ground truth và thống kê warning.
 
 ## Phạm vi và hạn chế
 
